@@ -1,65 +1,131 @@
-name: CI/CD Pipeline
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python application
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   pull_request:
-    branches:
-      - main
+    branches: [ "main" ]
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    runs-on: Ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: ./example-app
+        shell: bash
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.11"
+    - name: Install Poetry
+      uses: snok/install-poetry@v1.3.4
+    - name: Install Poetry Deps
+      run: poetry install --no-root
+    - name: Cache build venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: /home/runner/work/iac-labs/iac-labs/example-app/.venv
+        key: ${{ runner.os }}-venv
+  lint:
+    runs-on: ubuntu-latest
+    needs: build
     defaults:
       run:
         working-directory: ./example-app
     steps:
-      - uses: actions/checkout@v4
-      - name: set up python3.11
-        uses: actions/checkout@v3
-        with:
-          python-version: "3.11"
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.11"
+    - name: Install Poetry
+      uses: snok/install-poetry@v1.3.4
+    - name: Cache build venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: /home/runner/work/iac-labs/iac-labs/example-app/.venv
+        key: ${{ runner.os }}-venv
+    - name: Run Lint
+      run: poetry run task lint
+  
+  formatter:
+    runs-on: ubuntu-latest
+    needs: build
+    defaults:
+      run:
+        working-directory: ./example-app
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.11"
+    - name: Install Poetry
+      uses: snok/install-poetry@v1.3.4
+    - name: Cache build venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: /home/runner/work/iac-labs/iac-labs/example-app/.venv
+        key: ${{ runner.os }}-venv
+    - name: Run Format
+      run: poetry run task formatter
 
-      # Krok 2: Instalacja Poetry
-      - name: Install Poetry
-        run: |
-          echo "$HOME/.local/bin" >> $GITHUB_PATH  # Dodajemy Poetry do ścieżki
+  security:
+    runs-on: ubuntu-latest
+    needs: build
+    defaults:
+      run:
+        working-directory: ./example-app
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.11"
+    - name: Install Poetry
+      uses: snok/install-poetry@v1.3.4
+    - name: Cache build venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: /home/runner/work/iac-labs/iac-labs/example-app/.venv
+        key: ${{ runner.os }}-venv
+    - name: Run Sec
+      run: poetry run task security
 
-      #Krok 2.5
-      - name: Poetry install enviramnet
-        run: |
-          poetry install --no-root
-
-      # Krok 3: Sprawdzenie instalacji Poetry
-      - name: Check Poetry Installation
-        run: |
-          which poetry  # Sprawdzi, gdzie jest zainstalowane poetry
-          poetry --version  # Wyświetli wersję zainstalowanego poetry
-
-      # Krok 4: Cache Poetry Dependencies
-      - name: Cache Poetry Dependencies
-        uses: actions/cache@v3
-        with:
-          path: /home/runner/work/iac-labs/iac-labs/example-app/.venv
-          key: ${{ runner.os }}-poetry-dependencies-${{ hashFiles('example-app/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-dependencies-
-
-      # Krok 5: Instalacja zależności projektu
-      - name: Install Project Dependencies
-        run: |
-          echo "Checking if poetry is installed..."
-          which poetry  # Sprawdzenie, czy poetry jest w systemie
-          poetry --version  # Sprawdzenie wersji poetry
-
-      # Krok 6: Uruchomienie testów jednostkowych
-      - name: Run Unit Tests
-        run: |
-
-      # Krok 7: Linter, Formatter, Security
-      - name: Run Static Code Analysis (Linter, Formatter, Security)
-        run: |
-          $HOME/.local/bin/poetry run task lint  # Uruchomienie testów statycznych kodu
-          $HOME/.local/bin/poetry run task formatter  # Uruchomienie formatera kodu
-          $HOME/.local/bin/poetry run task security  # Uruchomienie testów bezpieczeństwa
+  unittests:
+    runs-on: ubuntu-latest
+    needs: [lint, formatter, security]
+    defaults:
+      run:
+        working-directory: ./example-app
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.11"
+    - name: Install Poetry
+      uses: snok/install-poetry@v1.3.4
+    - name: Cache build venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: /home/runner/work/iac-labs/iac-labs/example-app/.venv
+        key: ${{ runner.os }}-venv
+    - name: Run tests
+      run: poetry run task test
