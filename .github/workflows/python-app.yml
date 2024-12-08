@@ -27,6 +27,11 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH  # Dodajemy Poetry do ścieżki
 
+      #Krok 2.5
+      - name: Poetry install enviramnet
+        run: |
+          poetry install --no-root
+
       # Krok 3: Sprawdzenie instalacji Poetry
       - name: Check Poetry Installation
         run: |
